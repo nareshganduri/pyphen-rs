@@ -28,37 +28,35 @@ impl<'a> Iterator for Iter<'a> {
     type Item = (Cow<'a, str>, Cow<'a, str>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(position) = self.iter.next() {
-            if let Some(data) = position.data {
-                // get the nonstandard hyphenation data
-                let (change, mut index, cut) = data;
-                let change = if self.is_upper {
-                    change.to_uppercase()
-                } else {
-                    change.to_string()
-                };
-                index += position.value as isize;
-                let (c1, c2) = {
-                    let mut x = change.split('=');
-                    (x.next().unwrap(), x.next().unwrap())
-                };
+        let position = self.iter.next()?;
 
-                let index = if index < 0 {
-                    self.word.len() - index as usize
-                } else {
-                    index as usize
-                };
-
-                let first = self.word[..index].to_string() + c1;
-                let second = c2.to_string() + &self.word[(index + cut)..];
-                Some((Cow::Owned(first), Cow::Owned(second)))
+        if let Some(data) = position.data {
+            // get the nonstandard hyphenation data
+            let (change, mut index, cut) = data;
+            let change = if self.is_upper {
+                change.to_uppercase()
             } else {
-                let first = &self.word[..position.value];
-                let second = &self.word[position.value..];
-                Some((Cow::Borrowed(first), Cow::Borrowed(second)))
-            }
+                change.to_string()
+            };
+            index += position.value as isize;
+            let (c1, c2) = {
+                let mut x = change.split('=');
+                (x.next().unwrap(), x.next().unwrap())
+            };
+
+            let index = if index < 0 {
+                self.word.len() - index as usize
+            } else {
+                index as usize
+            };
+
+            let first = self.word[..index].to_string() + c1;
+            let second = c2.to_string() + &self.word[(index + cut)..];
+            Some((Cow::Owned(first), Cow::Owned(second)))
         } else {
-            None
+            let first = &self.word[..position.value];
+            let second = &self.word[position.value..];
+            Some((Cow::Borrowed(first), Cow::Borrowed(second)))
         }
     }
 }

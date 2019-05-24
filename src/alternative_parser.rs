@@ -43,18 +43,18 @@ impl AlternativeParser {
         ap
     }
 
-    pub fn call(&mut self, value: &DataInt) -> DataInt {
+    pub fn call(&mut self, d_int: &DataInt) -> DataInt {
         self.index -= 1;
-        if value.value & 1 != 0 {
+        if d_int.value & 1 != 0 {
             let Self {
                 ref change,
                 index,
                 cut,
             } = *self;
 
-            DataInt::new(value.value, Some((Rc::clone(change), index, cut)))
+            DataInt::new(d_int.value, Some((Rc::clone(change), index, cut)))
         } else {
-            DataInt::new(value.value, None)
+            DataInt::new(d_int.value, None)
         }
     }
 }

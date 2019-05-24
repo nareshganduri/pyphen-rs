@@ -3,6 +3,7 @@ name = "pyphen-rs"
 version = "0.1.0"
 authors = ["Naresh Ganduri <gandurinaresh@gmail.com>"]
 edition = "2018"
+homepage = "https://github.com/nareshganduri/pyphen-rs"
 license = "GPL-2.0+ AND LGPL-2.1+ AND MPL-1.1"
 readme = "README.md"
 
