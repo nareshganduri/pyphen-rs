@@ -104,7 +104,7 @@ impl Pyphen {
     /// ```
     /// use pyphen_rs::Builder;
     ///
-    /// let dic = Builder::lang("nl_NL").build();
+    /// let dic = Builder::lang("nl_NL").build().unwrap();
     ///
     /// assert_eq!(dic.inserted_with("lettergrepen", "."), "let.ter.gre.pen");
     /// ```
@@ -146,7 +146,7 @@ impl Pyphen {
     /// ```
     /// use pyphen_rs::Builder;
     ///
-    /// let dic = Builder::lang("nl_NL").build();
+    /// let dic = Builder::lang("nl_NL").build().unwrap();
     ///
     /// assert_eq!(dic.inserted("lettergrepen"), "let-ter-gre-pen");
     /// ```

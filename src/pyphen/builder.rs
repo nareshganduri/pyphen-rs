@@ -25,6 +25,7 @@ pub struct Builder<T> {
     right: usize,
     cache: bool,
     filename: T,
+    error: bool,
 }
 
 impl Builder<Rc<String>> {
@@ -33,17 +34,26 @@ impl Builder<Rc<String>> {
     /// - *lang* - lang of the included dict to use if no filename is given
     pub fn lang(lang: &str) -> Self {
         let mut filename = None;
+        let mut error = false;
         LANGUAGES.with(|l| {
-            let cpy = l.borrow().get(&language_fallback(lang)).unwrap().clone();
-            filename = Some(cpy);
+            if let Some(fallback) = language_fallback(lang) {
+                if let Some(cpy) = l.borrow().get(&fallback) {
+                    filename = Some(Rc::clone(&cpy));
+                } else {
+                    error = true;
+                }
+            } else {
+                error = true;
+            }
         });
-        let filename = filename.unwrap();
+        let filename = filename.unwrap_or_default();
 
         Self {
             filename,
             left: 2,
             right: 2,
             cache: true,
+            error,
         }
     }
 }
@@ -58,6 +68,7 @@ impl<T> Builder<T> {
             left: 2,
             right: 2,
             cache: true,
+            error: false,
         }
     }
 
@@ -85,27 +96,41 @@ where
     T: Deref<Target = String>,
 {
     /// Create an hyphenation instance for given lang or filename.
-    pub fn build(&self) -> Pyphen {
+    ///
+    /// Returns `Err` if the given lang or filename does not exist.
+    pub fn build(&self) -> Result<Pyphen, ()> {
         let Self {
             ref filename,
             left,
             right,
             cache,
+            mut error,
         } = *self;
         let filename: &str = &*filename;
         let mut hd = None;
 
         HD_CACHE.with(|hc| {
             if !cache || !hc.borrow().contains_key(filename) {
-                hc.borrow_mut()
-                    .insert(filename.to_string(), Rc::new(HyphDict::new(filename)));
+                if let Ok(hd) = HyphDict::new(filename) {
+                    hc.borrow_mut().insert(filename.to_string(), Rc::new(hd));
+                } else {
+                    error = true;
+                }
             }
 
-            let clone = hc.borrow()[filename].clone();
-            hd = Some(clone);
+            if let Some(x) = hc.borrow().get(filename) {
+                hd = Some(Rc::clone(x));
+            } else {
+                error = true;
+            }
         });
-        let hd = hd.unwrap();
 
-        Pyphen { hd, left, right }
+        if error {
+            Err(())
+        } else {
+            let hd = hd.unwrap();
+
+            Ok(Pyphen { hd, left, right })
+        }
     }
 }

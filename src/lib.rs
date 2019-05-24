@@ -75,13 +75,13 @@ thread_local! {
     }
 }
 
-/// Get a fallback language available in our dictionaries.
+/// Get a fallback language if one is available in our dictionaries.
 ///
 /// <http://www.unicode.org/reports/tr35/#Locale_Inheritance>
 ///
 /// We use the normal truncation inheritance. This function needs aliases
 /// including scripts for languages with multiple regions available.
-pub fn language_fallback(language: &str) -> String {
+pub fn language_fallback(language: &str) -> Option<String> {
     let language = language.replace('-', "_");
     let mut parts: Vec<_> = language.split('_').collect();
 
@@ -94,13 +94,13 @@ pub fn language_fallback(language: &str) -> String {
             }
         });
         if flag {
-            return language;
+            return Some(language);
         }
 
         parts.pop();
     }
 
-    panic!("No language fallback!")
+    None
 }
 
 #[cfg(test)]
@@ -128,17 +128,22 @@ mod tests {
         match_tuple(x, s1, s2);
     }
 
+    fn test_lang(a: Option<String>, b: &str) {
+        assert!(a.is_some());
+        assert_eq!(a.unwrap(), b);
+    }
+
     ///Test the ``inserted`` method.
     #[test]
     fn test_inserted() {
-        let dic = Builder::lang("nl_NL").build();
+        let dic = Builder::lang("nl_NL").build().unwrap();
         assert_eq!(dic.inserted("lettergrepen"), "let-ter-gre-pen");
     }
 
     /// Test the ``wrap`` method.
     #[test]
     fn test_wrap() {
-        let dic = Builder::lang("nl_NL").build();
+        let dic = Builder::lang("nl_NL").build().unwrap();
         match_tuple(
             dic.wrap("autobandventieldopje", 11).unwrap(),
             "autoband-",
@@ -149,7 +154,7 @@ mod tests {
     /// Test the ``iterate`` method.
     #[test]
     fn test_iterate() {
-        let dic = Builder::lang("nl_NL").build();
+        let dic = Builder::lang("nl_NL").build().unwrap();
         let mut iter = dic.iterate("Amsterdam");
         match_iter(iter.next(), "Amster", "dam");
         match_iter(iter.next(), "Am", "sterdam");
@@ -159,7 +164,7 @@ mod tests {
     /// Test the ``iterate`` method with a fallback dict.
     #[test]
     fn test_fallback_dict() {
-        let dic = Builder::lang("nl_NL-variant").build();
+        let dic = Builder::lang("nl_NL-variant").build().unwrap();
         let mut iter = dic.iterate("Amsterdam");
         match_iter(iter.next(), "Amster", "dam");
         match_iter(iter.next(), "Am", "sterdam");
@@ -168,15 +173,14 @@ mod tests {
 
     /// Test a missing dict.
     #[test]
-    #[should_panic]
     fn test_missing_dict() {
-        Builder::lang("mi_SS").build();
+        assert!(Builder::lang("mi_SS").build().is_err());
     }
 
     /// Test a personal dict.
     #[test]
     fn test_personal_dict() {
-        let dic = Builder::lang("fr").build();
+        let dic = Builder::lang("fr").build().unwrap();
         assert_ne!(
             dic.inserted("autobandventieldopje"),
             "au-to-band-ven-tiel-dop-je"
@@ -190,7 +194,7 @@ mod tests {
             let fr = l.get_mut("fr").unwrap();
             *fr = nl;
         });
-        let dic = Builder::lang("fr").build();
+        let dic = Builder::lang("fr").build().unwrap();
         assert_eq!(
             dic.inserted("autobandventieldopje"),
             "au-to-band-ven-tiel-dop-je"
@@ -200,13 +204,13 @@ mod tests {
     /// Test the ``left`` and ``right`` parameters.
     #[test]
     fn test_left_right() {
-        let dic = Builder::lang("nl_NL").build();
+        let dic = Builder::lang("nl_NL").build().unwrap();
         assert_eq!(dic.inserted("lettergrepen"), "let-ter-gre-pen");
-        let dic = Builder::lang("nl_NL").left(4).build();
+        let dic = Builder::lang("nl_NL").left(4).build().unwrap();
         assert_eq!(dic.inserted("lettergrepen"), "letter-gre-pen");
-        let dic = Builder::lang("nl_NL").right(4).build();
+        let dic = Builder::lang("nl_NL").right(4).build().unwrap();
         assert_eq!(dic.inserted("lettergrepen"), "let-ter-grepen");
-        let dic = Builder::lang("nl_NL").left(4).right(4).build();
+        let dic = Builder::lang("nl_NL").left(4).right(4).build().unwrap();
         assert_eq!(dic.inserted("lettergrepen"), "letter-grepen");
     }
 
@@ -217,7 +221,7 @@ mod tests {
             let l = l.borrow();
             let filename = l["nl_NL"].clone();
 
-            let dic = Builder::filename(filename).build();
+            let dic = Builder::filename(filename).build().unwrap();
             assert_eq!(dic.inserted("lettergrepen"), "let-ter-gre-pen");
         });
     }
@@ -225,7 +229,7 @@ mod tests {
     /// Test the alternative Parser.
     #[test]
     fn test_alternative() {
-        let dic = Builder::lang("hu").left(1).right(1).build();
+        let dic = Builder::lang("hu").left(1).right(1).build().unwrap();
         let mut iter = dic.iterate("kulissza");
         match_iter(iter.next(), "kulisz", "sza");
         match_iter(iter.next(), "ku", "lissza");
@@ -236,14 +240,14 @@ mod tests {
     /// Test uppercase.
     #[test]
     fn test_upper() {
-        let dic = Builder::lang("nl_NL").build();
+        let dic = Builder::lang("nl_NL").build().unwrap();
         assert_eq!(dic.inserted("LETTERGREPEN"), "LET-TER-GRE-PEN");
     }
 
     /// Test uppercase with alternative Parser.
     #[test]
     fn test_upper_alternative() {
-        let dic = Builder::lang("hu").left(1).right(1).build();
+        let dic = Builder::lang("hu").left(1).right(1).build().unwrap();
         let mut iter = dic.iterate("KULISSZA");
         match_iter(iter.next(), "KULISZ", "SZA");
         match_iter(iter.next(), "KU", "LISSZA");
@@ -256,7 +260,7 @@ mod tests {
     fn test_all_dictionaries() {
         LANGUAGES.with(|l| {
             for lang in l.borrow().keys() {
-                Builder::lang(lang).build();
+                Builder::lang(lang).build().unwrap();
             }
         });
     }
@@ -264,12 +268,12 @@ mod tests {
     /// Test the language fallback algorithm.
     #[test]
     fn test_fallback() {
-        assert_eq!(language_fallback("en"), "en");
-        assert_eq!(language_fallback("en_US"), "en_US");
-        assert_eq!(language_fallback("en_FR"), "en");
-        assert_eq!(language_fallback("en-Latn-US"), "en_Latn_US");
-        assert_eq!(language_fallback("en-Cyrl-US"), "en");
-        assert_eq!(language_fallback("fr-Latn-FR"), "fr");
-        assert_eq!(language_fallback("en-US_variant1-x"), "en_US");
+        test_lang(language_fallback("en"), "en");
+        test_lang(language_fallback("en_US"), "en_US");
+        test_lang(language_fallback("en_FR"), "en");
+        test_lang(language_fallback("en-Latn-US"), "en_Latn_US");
+        test_lang(language_fallback("en-Cyrl-US"), "en");
+        test_lang(language_fallback("fr-Latn-FR"), "fr");
+        test_lang(language_fallback("en-US_variant1-x"), "en_US");
     }
 }

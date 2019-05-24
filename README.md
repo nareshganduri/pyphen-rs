@@ -5,13 +5,13 @@ A pure Rust port of Python's [Pyphen][1] library.
 ```rust
 use pyphen_rs;
 
-assert_eq!(pyphen_rs::language_fallback("nl_NL_variant1"), "nl_NL");
+assert_eq!(pyphen_rs::language_fallback("nl_NL_variant1").unwrap(), "nl_NL");
 
 pyphen_rs::LANGUAGES.with(|l|) {
     assert!(l.borrow().contains_key("nl_NL"));
 };
 
-let dic = pyphen_rs::Builder::lang("nl_NL").build();
+let dic = pyphen_rs::Builder::lang("nl_NL").build().unwrap();
 assert_eq!(dic.inserted("lettergrepen"), "let-ter-gre-pen");
 
 let wrap = dic.wrap("autobandventieldopje", 11); // Some(("autoband-", "ventieldopje"))

@@ -33,11 +33,16 @@ pub struct HyphDict {
 impl HyphDict {
     /// Read a ``hyph_*.dic`` and parse its patterns.
     ///
-    /// :param filename: filename of hyph_*.dic to read
-    pub fn new(filename: &str) -> Self {
+    /// Returns `Err` if the filename does not exist
+    ///
+    /// - *filename* - filename of hyph_*.dic to read
+    pub fn new(filename: &str) -> Result<Self, ()> {
         let mut patterns = HashMap::new();
 
-        let stream = OpenOptions::new().read(true).open(filename).unwrap();
+        let stream = OpenOptions::new()
+            .read(true)
+            .open(filename)
+            .map_err(|_| ())?;
         let stream = BufReader::new(stream);
 
         for pattern in stream.lines() {
@@ -58,8 +63,7 @@ impl HyphDict {
                 .to_string();
 
             // read nonstandard hyphen alternatives
-            let mut factory = if pattern.contains('/') {
-                let idx = pattern.find('/').unwrap();
+            let mut factory = if let Some(idx) = pattern.find('/') {
                 let alternative = pattern.split_off(idx + 1);
                 pattern.pop();
                 Some(AlternativeParser::new(&pattern, &alternative))
@@ -106,11 +110,11 @@ impl HyphDict {
 
         let maxlen = patterns.keys().map(String::len).max().unwrap_or(0);
 
-        Self {
+        Ok(Self {
             patterns,
             cache: RefCell::new(HashMap::new()),
             maxlen,
-        }
+        })
     }
 
     /// Get a list of positions where the word can be hyphenated.
